@@ -2,8 +2,8 @@
     <!-- 攝影機畫面 -->
     <video id="camera-preview" style="width: 100%; border-radius: 12px; background: #000; object-fit: cover;" autoplay muted playsinline></video>
     
-    <!-- 掃描外框與雷射紅線 -->
-    <div style="position: absolute; top: 20%; left: 10%; right: 10%; bottom: 20%; border: 2px solid #00E676; border-radius: 8px; pointer-events: none; box-shadow: 0 0 15px rgba(0,230,118,0.5);">
+    <!-- 優化後的條碼掃描框（調整為寬扁造型，更符合一維條碼比例） -->
+    <div style="position: absolute; top: 38%; left: 10%; right: 10%; height: 24%; border: 2px solid #00E676; border-radius: 8px; pointer-events: none; box-shadow: 0 0 15px rgba(0,230,118,0.5);">
         <div style="position: absolute; top: 50%; width: 100%; height: 2px; background: #FF5252; animation: scanLine 2s infinite;"></div>
     </div>
 </div>
@@ -16,9 +16,7 @@
 window.addEventListener('load', function () {
     const codeReader = new ZXing.BrowserBarcodeReader();
     const resultDiv = document.getElementById('scan-result');
-    const videoElement = document.getElementById('camera-preview');
 
-    // 播放成功音效（BB聲）
     const playBeep = () => {
         try {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -36,15 +34,11 @@ window.addEventListener('load', function () {
         }
     };
 
-    // 啟動相機與持續解碼
     codeReader.decodeFromVideoDevice(null, 'camera-preview', (result, err) => {
         if (result) {
             const code = result.text;
             resultDiv.innerText = `已偵測條碼：${code}`;
             playBeep();
-            
-            // 這裡可以將條碼帶入您的系統欄位，例如：
-            // document.getElementById('product-barcode-input').value = code;
         }
         if (err && !(err instanceof ZXing.NotFoundException)) {
             console.error(err);
