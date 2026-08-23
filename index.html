@@ -1,6 +1,6 @@
 <div id="scanner-container" style="position: relative; width: 100%; max-width: 400px; margin: auto;">
     <!-- 攝影機畫面 -->
-    <video id="camera-preview" autoplay playsinline style="width: 100%; border-radius: 12px; background: #000;"></video>
+    <video id="camera-preview" style="width: 100%; border-radius: 12px; background: #000; object-fit: cover;" autoplay muted playsinline></video>
     
     <!-- 掃描外框與雷射紅線 -->
     <div style="position: absolute; top: 20%; left: 10%; right: 10%; bottom: 20%; border: 2px solid #00E676; border-radius: 8px; pointer-events: none; box-shadow: 0 0 15px rgba(0,230,118,0.5);">
@@ -10,73 +10,50 @@
 
 <div id="scan-result" style="text-align: center; margin-top: 10px; font-weight: bold; font-size: 16px;">已偵測條碼：尚未掃描</div>
 
+<!-- 載入 ZXing 條碼辨識庫 -->
+<script type="text/javascript" src="https://unpkg.com/@zxing/library@latest"></script>
 <script>
-async function initScanner() {
-    const video = document.getElementById('camera-preview');
+window.addEventListener('load', function () {
+    const codeReader = new ZXing.BrowserBarcodeReader();
     const resultDiv = document.getElementById('scan-result');
+    const videoElement = document.getElementById('camera-preview');
 
-    // 檢查瀏覽器是否支援 BarcodeDetector API
-    if (!('BarcodeDetector' in window)) {
-        resultDiv.innerText = "此瀏覽器不支援原生條碼偵測，建議使用 Chrome 或 Safari";
-        return;
-    }
-
-    const barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128'] });
-
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: 'environment' } // 優先使用後鏡頭
-        });
-        video.srcObject = stream;
-        
-        // 播放成功音效（BB聲）
-        const playBeep = () => {
+    // 播放成功音效（BB聲）
+    const playBeep = () => {
+        try {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
             osc.type = 'sine';
-            osc.frequency.value = 800; // 頻率
+            osc.frequency.value = 800;
             gain.gain.setValueAtTime(0.1, ctx.currentTime);
             osc.connect(gain);
             gain.connect(ctx.destination);
             osc.start();
-            osc.stop(ctx.currentTime + 0.15); // 持续 150ms
-        };
+            osc.stop(ctx.currentTime + 0.15);
+        } catch (e) {
+            console.log(e);
+        }
+    };
 
-        // 即時掃描迴圈
-        const detectCode = async () => {
-            if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                try {
-                    const barcodes = await barcodeDetector.detect(video);
-                    if (barcodes.length > 0) {
-                        const code = barcodes[0].rawValue;
-                        resultDiv.innerText = `已偵測條碼：${code}`;
-                        playBeep(); // 觸發 BB 聲
-                        
-                        // 這裡可以將 code 帶入你的系統欄位中，例如：
-                        // document.getElementById('product-barcode-input').value = code;
-                        
-                        // 暫停一下避免重複觸發
-                        await new Promise(resolve => setTimeout(resolve, 1500));
-                    }
-                } catch (err) {
-                    console.error(err);
-                }
-            }
-            requestAnimationFrame(detectCode);
-        };
-
-        video.addEventListener('play', () => {
-            detectCode();
-        });
-
-    } catch (err) {
-        resultDiv.innerText = "無法存取相機，請檢查權限設定";
-    }
-}
-
-// 啟動掃描
-initScanner();
+    // 啟動相機與持續解碼
+    codeReader.decodeFromVideoDevice(null, 'camera-preview', (result, err) => {
+        if (result) {
+            const code = result.text;
+            resultDiv.innerText = `已偵測條碼：${code}`;
+            playBeep();
+            
+            // 這裡可以將條碼帶入您的系統欄位，例如：
+            // document.getElementById('product-barcode-input').value = code;
+        }
+        if (err && !(err instanceof ZXing.NotFoundException)) {
+            console.error(err);
+        }
+    }).catch(err => {
+        console.error(err);
+        resultDiv.innerText = "無法存取相機，請檢查權限或改用 Chrome / Safari 開啟";
+    });
+});
 </script>
 
 <style>
